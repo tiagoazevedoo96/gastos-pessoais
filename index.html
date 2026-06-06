@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gastos">
+<meta name="theme-color" content="#0e0f0e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Gastos Pessoais</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:wght@300;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0e0f0e;--surface:#161817;--surface2:#1e211f;--border:#2a2e2b;
+  --accent:#b5f265;--accent2:#5df5c3;--red:#ff5c5c;--text:#e8ede9;--muted:#6b7569;
+  --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
+}
+body{font-family:'DM Mono','Courier New',monospace;background:var(--bg);color:var(--text);min-height:100dvh;-webkit-tap-highlight-color:transparent}
+
+/* SYNC BAR */
+#sync-bar{height:2px;background:var(--border);position:fixed;top:0;left:0;right:0;z-index:200}
+#sync-fill{height:100%;width:0%;background:var(--accent);transition:width .3s,opacity .5s}
+
+/* HEADER */
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:calc(1.1rem + var(--safe-top)) 1.2rem 1.1rem;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.logo{font-family:'Fraunces',Georgia,serif;font-size:1.2rem;font-weight:600;color:var(--accent);letter-spacing:-0.02em}
+.logo span{color:var(--muted);font-weight:300}
+.month-nav{display:flex;align-items:center;gap:0.4rem}
+.month-nav button{background:var(--surface2);border:1px solid var(--border);color:var(--text);width:32px;height:32px;border-radius:7px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center}
+.month-nav button:active{background:var(--border)}
+#month-label{font-size:0.72rem;color:var(--accent);min-width:82px;text-align:center;text-transform:uppercase;letter-spacing:0.08em}
+
+/* SUMMARY */
+.summary-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+.sc{background:var(--surface);padding:0.85rem 0.4rem;text-align:center}
+.sc .lbl{font-size:0.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.25rem}
+.sc .val{font-size:0.95rem;font-weight:500}
+.sc.tot .val{color:var(--accent)}.sc.pdc .val{color:var(--accent2)}.sc.pnd .val{color:var(--red)}
+
+/* MAIN */
+main{padding:1.1rem 0.9rem calc(4rem + var(--safe-bottom));display:flex;flex-direction:column;gap:1.1rem;max-width:700px;margin:0 auto}
+
+/* SECTION */
+.section{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.sec-head{padding:0.75rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.sec-title{font-family:'Fraunces',Georgia,serif;font-size:0.88rem;font-weight:600;color:var(--accent)}
+.sec-tot{font-size:0.68rem;color:var(--muted)}.sec-tot span{color:var(--text);font-weight:500}
+.prog-wrap{padding:0.45rem 1rem 0.65rem;border-bottom:1px solid var(--border)}
+.prog-lbl{display:flex;justify-content:space-between;font-size:0.56rem;color:var(--muted);margin-bottom:0.3rem}
+.prog-bg{background:var(--surface2);border-radius:99px;height:3px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:99px;transition:width .4s ease}
+
+/* EXPENSE ROW */
+.exp-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;padding:0.8rem 1rem;border-bottom:1px solid var(--border);gap:0.7rem}
+.exp-row:last-child{border-bottom:none}
+.exp-row:active{background:var(--surface2)}
+.exp-name{font-size:0.76rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.exp-amt{font-size:0.73rem;color:var(--muted);white-space:nowrap;text-align:right;cursor:pointer;border-bottom:1px dashed var(--border);padding-bottom:1px}
+.exp-amt:hover{color:var(--accent);border-color:var(--accent)}
+
+.tog{display:flex;align-items:center;gap:0.25rem;padding:0.3rem 0.55rem;border-radius:20px;border:1px solid;cursor:pointer;font-family:'DM Mono',monospace;font-size:0.58rem;font-weight:500;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap}
+.tog.paid{background:rgba(181,242,101,0.1);border-color:var(--accent);color:var(--accent)}
+.tog.unpaid{background:rgba(255,92,92,0.1);border-color:var(--red);color:var(--red)}
+.tog:active{transform:scale(0.95)}
+
+/* ANNUAL */
+.ann-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;padding:0.8rem 1rem;border-bottom:1px solid var(--border);gap:0.7rem}
+.ann-row:last-child{border-bottom:none}
+.ann-info{display:flex;flex-direction:column;gap:0.18rem;min-width:0}
+.ann-name{font-size:0.76rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ann-badge{display:inline-block;font-size:0.52rem;padding:0.12rem 0.35rem;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;width:fit-content}
+.ann-amts{text-align:right}.ann-tot{font-size:0.73rem;color:var(--text);cursor:pointer;border-bottom:1px dashed var(--border)}.ann-tot:hover{color:var(--accent);border-color:var(--accent)}
+.ann-mo{font-size:0.58rem;color:var(--muted)}
+
+/* DELETE BTN */
+.del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.95rem;padding:0.3rem 0.35rem;border-radius:4px;line-height:1}
+.del:active{color:var(--red)}
+
+/* ADD FORM */
+.add-sec{background:var(--surface);border:1px dashed var(--border);border-radius:12px;padding:1rem}
+.add-sec h3{font-family:'Fraunces',serif;font-size:0.8rem;color:var(--muted);margin-bottom:0.85rem;font-weight:300}
+.add-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.45rem}
+.add-grid .full{grid-column:span 2}
+.fg{display:flex;flex-direction:column;gap:0.22rem}
+.fg label{font-size:0.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
+.fg input,.fg select{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.55rem 0.7rem;font-family:'DM Mono',monospace;font-size:0.76rem;outline:none;transition:border-color .2s;width:100%;-webkit-appearance:none;appearance:none}
+.fg input:focus,.fg select:focus{border-color:var(--accent)}
+.fg select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7569' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.65rem center;padding-right:1.8rem}
+.fg select option{background:#1e211f}
+.btn-add{background:var(--accent);color:var(--bg);border:none;border-radius:8px;padding:0.58rem 1rem;font-family:'DM Mono',monospace;font-size:0.76rem;font-weight:500;cursor:pointer;width:100%}
+.btn-add:active{opacity:0.8}
+
+/* EDIT MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px 16px 0 0;padding:1.2rem 1.2rem calc(1.2rem + var(--safe-bottom));width:100%;max-width:500px;transform:translateY(100%);transition:transform .3s ease}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal h3{font-family:'Fraunces',serif;font-size:0.9rem;color:var(--accent);margin-bottom:1rem;font-weight:600}
+.modal-fields{display:flex;flex-direction:column;gap:0.6rem;margin-bottom:1rem}
+.modal-row{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem}
+.modal-btns{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem}
+.btn-cancel{background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:0.6rem;font-family:'DM Mono',monospace;font-size:0.75rem;cursor:pointer}
+.btn-save{background:var(--accent);color:var(--bg);border:none;border-radius:8px;padding:0.6rem;font-family:'DM Mono',monospace;font-size:0.75rem;font-weight:500;cursor:pointer}
+
+.empty{padding:1.8rem;text-align:center;color:var(--muted);font-size:0.7rem}
+</style>
+</head>
+<body>
+
+<div id="sync-bar"><div id="sync-fill"></div></div>
+
+<header>
+  <div class="logo">Gastos <span>Pessoais</span></div>
+  <div class="month-nav">
+    <button onclick="changeMonth(-1)">‹</button>
+    <div id="month-label"></div>
+    <button onclick="changeMonth(1)">›</button>
+  </div>
+</header>
+
+<div class="summary-bar">
+  <div class="sc tot"><div class="lbl">Total/mês</div><div class="val" id="sum-total">—</div></div>
+  <div class="sc pdc"><div class="lbl">Pago</div><div class="val" id="sum-paid">—</div></div>
+  <div class="sc pnd"><div class="lbl">Por pagar</div><div class="val" id="sum-pending">—</div></div>
+</div>
+
+<main>
+  <div class="section">
+    <div class="sec-head"><div class="sec-title">👤 Pessoais</div><div class="sec-tot">Total: <span id="total-pessoais">—</span></div></div>
+    <div class="prog-wrap"><div class="prog-lbl"><span id="pl-pessoais">—</span><span id="pc-pessoais"></span></div><div class="prog-bg"><div class="prog-fill" id="pf-pessoais" style="width:0%"></div></div></div>
+    <div id="list-pessoais"></div>
+  </div>
+  <div class="section">
+    <div class="sec-head"><div class="sec-title">🏠 Casa</div><div class="sec-tot">Total: <span id="total-casa">—</span></div></div>
+    <div class="prog-wrap"><div class="prog-lbl"><span id="pl-casa">—</span><span id="pc-casa"></span></div><div class="prog-bg"><div class="prog-fill" id="pf-casa" style="width:0%"></div></div></div>
+    <div id="list-casa"></div>
+  </div>
+  <div class="section">
+    <div class="sec-head"><div class="sec-title">📅 Anual</div><div class="sec-tot">Provisão/mês: <span id="total-anual">—</span></div></div>
+    <div id="list-anual"></div>
+  </div>
+  <div class="add-sec">
+    <h3>+ Adicionar despesa</h3>
+    <div class="add-grid">
+      <div class="fg"><label>Nome</label><input type="text" id="new-name" placeholder="Ex: Netflix" autocomplete="off"></div>
+      <div class="fg"><label>Valor (€)</label><input type="number" id="new-amount" placeholder="0.00" step="0.01" min="0" inputmode="decimal"></div>
+      <div class="fg"><label>Categoria</label>
+        <select id="new-cat" onchange="toggleMonthField()">
+          <option value="pessoais">Pessoais</option>
+          <option value="casa">Casa</option>
+          <option value="anual">Anual</option>
+        </select>
+      </div>
+      <div class="fg" id="anual-month-group" style="display:none"><label>Mês pagamento</label>
+        <select id="new-month">
+          <option value="JAN">Janeiro</option><option value="FEV">Fevereiro</option>
+          <option value="MAR">Março</option><option value="ABR">Abril</option>
+          <option value="MAI">Maio</option><option value="JUN">Junho</option>
+          <option value="JUL">Julho</option><option value="AGO">Agosto</option>
+          <option value="SET">Setembro</option><option value="OUT">Outubro</option>
+          <option value="NOV">Novembro</option><option value="DEZ">Dezembro</option>
+        </select>
+      </div>
+      <div class="full"><button class="btn-add" onclick="addExpense()">Adicionar</button></div>
+    </div>
+  </div>
+</main>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <h3>✏️ Editar despesa</h3>
+    <div class="modal-fields">
+      <div class="modal-row">
+        <div class="fg"><label>Nome</label><input type="text" id="edit-name" autocomplete="off"></div>
+        <div class="fg"><label>Valor (€)</label><input type="number" id="edit-amount" step="0.01" min="0" inputmode="decimal"></div>
+      </div>
+      <div class="modal-row" id="edit-month-row" style="display:none">
+        <div class="fg"><label>Mês pagamento</label>
+          <select id="edit-month">
+            <option value="JAN">Janeiro</option><option value="FEV">Fevereiro</option>
+            <option value="MAR">Março</option><option value="ABR">Abril</option>
+            <option value="MAI">Maio</option><option value="JUN">Junho</option>
+            <option value="JUL">Julho</option><option value="AGO">Agosto</option>
+            <option value="SET">Setembro</option><option value="OUT">Outubro</option>
+            <option value="NOV">Novembro</option><option value="DEZ">Dezembro</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveEdit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCB8glCutVoCzu1GYz7p7PqxQaW0ceV9V8",
+  authDomain: "gastos-pessoais-39d46.firebaseapp.com",
+  projectId: "gastos-pessoais-39d46",
+  storageBucket: "gastos-pessoais-39d46.firebasestorage.app",
+  messagingSenderId: "728537823495",
+  appId: "1:728537823495:web:d0d80091552b1ec0092da2"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+const MONTHS_SHORT = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+const LS_EXPENSES  = 'gp_expenses_v2';
+const LS_PAYMENTS  = (m,y) => `gp_pay_${y}_${m}`;
+
+const DEFAULT = {
+  pessoais:[
+    {id:'p1',name:'Gasoleo',amount:100},{id:'p2',name:'Garagem',amount:50},
+    {id:'p3',name:'Spotify',amount:17},{id:'p4',name:'Prime',amount:5},
+    {id:'p5',name:'iCloud',amount:10},{id:'p6',name:'Tabaco',amount:8},
+    {id:'p7',name:'Almoços / Jantares / TakeAway',amount:7},
+  ],
+  casa:[
+    {id:'c1',name:'Prestação',amount:890},{id:'c2',name:'Água',amount:0},
+    {id:'c3',name:'Luz',amount:0},{id:'c4',name:'Net',amount:0},
+    {id:'c5',name:'Alimentação',amount:100},{id:'c6',name:'Seg. Saúde',amount:0},
+    {id:'c7',name:'Crédito',amount:310},
+  ],
+  anual:[
+    {id:'a1',name:'Selo Audi',amount:250,month:'SET'},{id:'a2',name:'Seguro Audi',amount:500,month:'MAR'},
+    {id:'a3',name:'Seg. Mota',amount:117.04,month:'ABR'},{id:'a4',name:'Selo Mota',amount:64,month:'JUL'},
+    {id:'a5',name:'Selo Smart',amount:100,month:'JUN'},{id:'a6',name:'Seg. Smart',amount:155,month:'SET'},
+    {id:'a7',name:'Revisão Audi',amount:220,month:'AGO'},{id:'a8',name:'Revisão Smart',amount:120,month:'AGO'},
+    {id:'a9',name:'Revisão Mota',amount:80,month:'JUN'},{id:'a10',name:'Inspeção Audi',amount:35,month:'ABR'},
+    {id:'a11',name:'Inspeção Smart',amount:35,month:'AGO'},
+  ]
+};
+
+let currentMonth = new Date().getMonth();
+let currentYear  = new Date().getFullYear();
+let state = { pessoais:[], casa:[], anual:[], payments:{} };
+let unsub = null;
+let editCtx = null; // { section, id }
+
+// ── Sync bar ─────────────────────────────────────────────────
+function syncStart(){ document.getElementById('sync-fill').style.cssText='width:60%;opacity:1'; }
+function syncDone() { const f=document.getElementById('sync-fill'); f.style.width='100%'; setTimeout(()=>f.style.opacity='0',400); }
+
+// ── Local cache ───────────────────────────────────────────────
+function cacheExpenses(){ localStorage.setItem(LS_EXPENSES, JSON.stringify({pessoais:state.pessoais,casa:state.casa,anual:state.anual})); }
+function cachePayments(m,y){ localStorage.setItem(LS_PAYMENTS(m,y), JSON.stringify(state.payments)); }
+function loadCachedExpenses(){
+  const r = localStorage.getItem(LS_EXPENSES);
+  return r ? JSON.parse(r) : null;
+}
+function loadCachedPayments(m,y){
+  const r = localStorage.getItem(LS_PAYMENTS(m,y));
+  return r ? JSON.parse(r) : {};
+}
+
+// ── Firestore refs ────────────────────────────────────────────
+const expRef  = doc(db,'gastos','expenses');
+const payRef  = (m,y) => doc(db,'gastos',`payments_${y}_${m}`);
+
+// ── Boot: show cache instantly, then sync ─────────────────────
+async function boot(){
+  // 1) Show cached data immediately (instant)
+  const cached = loadCachedExpenses();
+  if(cached){ state.pessoais=cached.pessoais; state.casa=cached.casa; state.anual=cached.anual; }
+  else { state.pessoais=DEFAULT.pessoais; state.casa=DEFAULT.casa; state.anual=DEFAULT.anual; }
+  state.payments = loadCachedPayments(currentMonth, currentYear);
+  render();
+
+  // 2) Sync expenses from Firebase in background
+  syncStart();
+  try {
+    const snap = await getDoc(expRef);
+    if(snap.exists()){
+      const d = snap.data();
+      state.pessoais = d.pessoais||[];
+      state.casa     = d.casa||[];
+      state.anual    = d.anual||[];
+      cacheExpenses();
+    } else {
+      // First time — write defaults
+      await setDoc(expRef,{pessoais:state.pessoais,casa:state.casa,anual:state.anual});
+      cacheExpenses();
+    }
+  } catch(e){ console.warn('Firebase expenses offline',e); }
+  syncDone();
+
+  // 3) Subscribe to payments (real-time)
+  subscribePayments(currentMonth, currentYear);
+}
+
+function subscribePayments(m,y){
+  if(unsub) unsub();
+  unsub = onSnapshot(payRef(m,y), snap=>{
+    state.payments = snap.exists() ? (snap.data().paid||{}) : {};
+    cachePayments(m,y);
+    render();
+  }, ()=>{ state.payments=loadCachedPayments(m,y); render(); });
+}
+
+// ── Save expenses ─────────────────────────────────────────────
+async function saveExpenses(){
+  cacheExpenses();
+  syncStart();
+  try{ await setDoc(expRef,{pessoais:state.pessoais,casa:state.casa,anual:state.anual}); syncDone(); }
+  catch(e){ console.warn('Save failed',e); }
+}
+
+// ── Toggle payment ────────────────────────────────────────────
+window.togglePaid = async function(id,m,y){
+  state.payments[id] = !state.payments[id];
+  cachePayments(m,y);
+  render();
+  try{ await setDoc(payRef(m,y),{paid:state.payments},{merge:true}); }
+  catch(e){ console.warn('Pay sync failed',e); }
+};
+
+// ── Edit modal ────────────────────────────────────────────────
+window.openEdit = function(section,id){
+  const exp = state[section].find(e=>e.id===id);
+  if(!exp) return;
+  editCtx = {section,id};
+  document.getElementById('edit-name').value   = exp.name;
+  document.getElementById('edit-amount').value = exp.amount;
+  const mrow = document.getElementById('edit-month-row');
+  if(section==='anual'){
+    mrow.style.display='grid';
+    document.getElementById('edit-month').value = exp.month||'JAN';
+  } else { mrow.style.display='none'; }
+  document.getElementById('modal-overlay').classList.add('open');
+};
+
+window.closeModal = function(e){
+  if(e && e.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('open');
+  editCtx=null;
+};
+
+window.saveEdit = async function(){
+  if(!editCtx) return;
+  const {section,id} = editCtx;
+  const name   = document.getElementById('edit-name').value.trim();
+  const amount = parseFloat(document.getElementById('edit-amount').value);
+  if(!name||isNaN(amount)||amount<0){ alert('Preenche os campos corretamente.'); return; }
+  const idx = state[section].findIndex(e=>e.id===id);
+  if(idx===-1) return;
+  state[section][idx].name   = name;
+  state[section][idx].amount = amount;
+  if(section==='anual') state[section][idx].month = document.getElementById('edit-month').value;
+  document.getElementById('modal-overlay').classList.remove('open');
+  editCtx=null;
+  render();
+  await saveExpenses();
+};
+
+// ── Add expense ───────────────────────────────────────────────
+window.addExpense = async function(){
+  const name   = document.getElementById('new-name').value.trim();
+  const amount = parseFloat(document.getElementById('new-amount').value);
+  const cat    = document.getElementById('new-cat').value;
+  if(!name||isNaN(amount)||amount<=0){ alert('Preenche o nome e o valor.'); return; }
+  const exp = {id:cat[0]+Date.now(),name,amount};
+  if(cat==='anual') exp.month = document.getElementById('new-month').value;
+  state[cat].push(exp);
+  document.getElementById('new-name').value='';
+  document.getElementById('new-amount').value='';
+  render();
+  await saveExpenses();
+};
+
+// ── Delete ────────────────────────────────────────────────────
+window.deleteExpense = async function(section,id){
+  if(!confirm('Remover esta despesa?')) return;
+  state[section]=state[section].filter(e=>e.id!==id);
+  render();
+  await saveExpenses();
+};
+
+// ── Change month ──────────────────────────────────────────────
+window.changeMonth = function(d){
+  currentMonth+=d;
+  if(currentMonth>11){currentMonth=0;currentYear++;}
+  if(currentMonth<0){currentMonth=11;currentYear--;}
+  // Show cached payments instantly so UI responds immediately
+  state.payments = loadCachedPayments(currentMonth,currentYear);
+  render();
+  // Then subscribe to Firebase for real-time updates
+  subscribePayments(currentMonth,currentYear);
+};
+
+window.toggleMonthField = function(){
+  document.getElementById('anual-month-group').style.display =
+    document.getElementById('new-cat').value==='anual'?'flex':'none';
+};
+
+// ── Format ────────────────────────────────────────────────────
+function fmt(v){
+  if(v===0) return '0€';
+  return (v%1===0?v:v.toFixed(2).replace('.',','))+'€';
+}
+
+// ── Render section ────────────────────────────────────────────
+function renderSection(section,listId,totalId,pfId,plId,pcId){
+  const data=state[section]; const el=document.getElementById(listId);
+  if(!data.length){
+    el.innerHTML='<div class="empty">Sem despesas — adiciona abaixo ✦</div>';
+    document.getElementById(totalId).textContent='0€';
+    document.getElementById(pfId).style.width='0%';
+    document.getElementById(plId).textContent='0% pago';
+    document.getElementById(pcId).textContent='';
+    return{total:0,paidTotal:0};
+  }
+  let total=0,paidTotal=0,paidCount=0,html='';
+  data.forEach(e=>{
+    const paid=!!state.payments[e.id];
+    if(paid){paidTotal+=e.amount;paidCount++;}
+    total+=e.amount;
+    html+=`<div class="exp-row">
+      <div class="exp-name">${e.name}</div>
+      <div class="exp-amt" onclick="openEdit('${section}','${e.id}')" title="Clica para editar">${fmt(e.amount)} ✏️</div>
+      <div style="display:flex;gap:0.3rem;align-items:center">
+        <button class="tog ${paid?'paid':'unpaid'}" onclick="togglePaid('${e.id}',${currentMonth},${currentYear})">${paid?'✓ Pago':'✗ Pendente'}</button>
+        <button class="del" onclick="deleteExpense('${section}','${e.id}')">×</button>
+      </div>
+    </div>`;
+  });
+  el.innerHTML=html;
+  document.getElementById(totalId).textContent=fmt(total);
+  const pct=total>0?Math.round((paidTotal/total)*100):0;
+  document.getElementById(pfId).style.width=pct+'%';
+  document.getElementById(plId).textContent=pct+'% pago';
+  document.getElementById(pcId).textContent=`${paidCount}/${data.length}`;
+  return{total,paidTotal};
+}
+
+function renderAnual(){
+  const data=state.anual; const el=document.getElementById('list-anual');
+  if(!data.length){el.innerHTML='<div class="empty">Sem despesas anuais.</div>';document.getElementById('total-anual').textContent='0€';return 0;}
+  const totalM=data.reduce((s,e)=>s+e.amount/12,0);
+  el.innerHTML=data.map(e=>`
+    <div class="ann-row">
+      <div class="ann-info">
+        <div class="ann-name">${e.name}</div>
+        <div class="ann-badge">${e.month||'—'}</div>
+      </div>
+      <div class="ann-amts">
+        <div class="ann-tot" onclick="openEdit('anual','${e.id}')" title="Clica para editar">${fmt(e.amount)} ✏️</div>
+        <div class="ann-mo">${fmt(e.amount/12)}/mês</div>
+      </div>
+      <button class="del" onclick="deleteExpense('anual','${e.id}')">×</button>
+    </div>`).join('');
+  document.getElementById('total-anual').textContent=fmt(totalM);
+  return totalM;
+}
+
+window.render = function(){
+  document.getElementById('month-label').textContent=MONTHS_SHORT[currentMonth]+' '+currentYear;
+  const p=renderSection('pessoais','list-pessoais','total-pessoais','pf-pessoais','pl-pessoais','pc-pessoais');
+  const c=renderSection('casa','list-casa','total-casa','pf-casa','pl-casa','pc-casa');
+  const aM=renderAnual();
+  const tot=p.total+c.total+aM, paid=p.paidTotal+c.paidTotal;
+  document.getElementById('sum-total').textContent=fmt(tot);
+  document.getElementById('sum-paid').textContent=fmt(paid);
+  document.getElementById('sum-pending').textContent=fmt(tot-paid);
+};
+
+boot();
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+</body>
+</html>
